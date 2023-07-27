@@ -1,0 +1,109 @@
+<?php
+error_reporting(E_ALL);
+
+class SupportCrmClient
+{
+
+    public function getAccessToken()
+    {
+        
+            // if (!isset($_SESSION)){
+            // session_start();
+            // }
+    
+
+        $crm_config = array(      
+            'client_id' => '1000.ILK91ED7EYCCT92GK69BSNXPRXR66D',
+            'client_secret' => 'a37e00a756e3da04011d453ca636aaa9b1ddbcf45f',
+            "refresh_token" => "1000.19d391823584676c53620d460b7f1374.488283fbb37afd34651300a957d6c085", 
+            'grant_type' => 'refresh_token',
+            "api_domain" => "https://www.zohoapis.com",
+            'account_domain' => 'https://accounts.zoho.com/',            
+        );
+        
+
+        // print_r($crm_config);exit();
+
+        $zoho_crm_session = (isset($_SESSION['zoho_recruit']) ? $_SESSION['zoho_recruit'] : array());
+        $current_time = date('Y-m-d H:i:s');
+
+
+        if (isset($zoho_crm_session->access_token) && ($current_time < $zoho_crm_session->expiring_at))
+        {
+            return $_SESSION['zoho_recruit'];
+        }
+         else 
+        {
+            $url = $crm_config['account_domain'] . 'oauth/v2/token';
+            $postData = [
+                'client_id' => $crm_config['client_id'],
+                'client_secret' => $crm_config['client_secret'],
+                'refresh_token' => $crm_config['refresh_token'],
+                'grant_type' => $crm_config['grant_type']
+            ];
+
+            $ch = curl_init(); // Create a curl handle
+            curl_setopt($ch, CURLOPT_URL, $url); // Third party API URL
+            curl_setopt($ch, CURLOPT_POST, FALSE);  // To set POST method true
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $postData); // To send data to the API URL
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE); // To set SSL Verifier false
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE); // To set return response from the API
+            $response = curl_exec($ch); // To execute the handle and get the response 
+            $response = json_decode($response);
+            // print_r($response);exit();
+
+            if (isset($response->access_token)) {
+                $now = time();
+                $ten_minutes = $now + (30 * 60);
+                $startDate = date('Y-m-d H:i:s', $now);
+                $endDate = date('Y-m-d H:i:s', $ten_minutes);
+                $current_time = date('Y-m-d H:i:s');
+                $response->expiring_at = $endDate;
+                $_SESSION['zoho_recruit'] = $response;
+
+                // $this->session->save();
+                return $response;
+            } else {
+                throw new Exception("Error Processing Request", 1);
+            }
+        }
+    }
+
+   
+    public function updateZohoRecruitRecord($module, $record_id, $postData)
+    {
+        $url = $module . '/' . $record_id;
+        return $res = $this->sendPutRequest($url, $postData);
+    }
+
+
+    public function sendPutRequest($url, $postData)
+    {
+        $url = 'https://recruit.zoho.com/recruit/v2/' . $url;
+        // echo $url;
+        $credentials = $this->getAccessToken();
+        // print_r($postData);
+        if (isset($credentials->access_token)) {
+            $postData = json_encode($postData);
+            echo $credentials->access_token;
+            $headers = array('Authorization: Zoho-oauthtoken ' . $credentials->access_token, 'Content-type: application/json'); // return datatype
+            $ch = curl_init(); // Create a curl handle
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); // Set curl handle header 
+            curl_setopt($ch, CURLOPT_URL, $url); // Third party API URL
+            curl_setopt($ch, CURLOPT_POST, FALSE);  // To set POST method true
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $postData); // To send data to the API URL
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE); // To set SSL Verifier false
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE); // To set return response from the API
+             $response = curl_exec($ch); // To execute the handle and get the response 
+            print_r($response);exit();
+            $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE); // Get Http Status code
+        }
+    }
+
+
+
+    
+}
+?>
