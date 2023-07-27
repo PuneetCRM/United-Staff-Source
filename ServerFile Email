@@ -1,0 +1,100 @@
+<?php
+error_reporting(E_ALL);
+
+
+include 'supportCRMClient.php';
+
+$zoho = new SupportCrmClient();
+set_time_limit(3000);
+
+$hostname = '{imap.gmail.com:993/imap/ssl/novalidate-cert}INBOX';
+$username = 'team@unitedstaffsource.com';
+$password = 'yjttdyacwxwizyvg';
+
+// / try to connect /
+$inbox = imap_open($hostname, $username, $password) or die('Cannot connect to Gmail: ' . imap_last_error());
+
+// / grab emails /
+$emails = imap_search($inbox, 'ALL');
+// print_r($emails);
+// if emails are returned, cycle through each... /
+if ($emails) {
+
+    // / begin output var /
+    $output = '';
+
+    // / put the newest emails on top /
+    rsort($emails);
+
+    
+    foreach ($emails as $k => $email_number)
+    {
+        // print_r($email_number);
+        // print_r($k); 
+        $overview = imap_fetch_overview($inbox, $email_number, 0);
+        $message = imap_fetchbody($inbox, $email_number, 2);
+        // print_r($overview);
+        $subject = ($overview[0]->subject);
+        // print_r($subject);
+        // echo"<br/>";
+        // print_r($message);
+        $string = preg_replace('/[\x00-\x1F\x7F-\xFF]/', '', $message);
+        // print_r($string);
+        $data = (str_replace(array("=C2=A0", "="), '', $string));
+        // print_r($data);
+        
+       $fdata = explode("Candidate ID:",$data);
+    //    print_r($fdata[1]);
+
+       $fadata2 = explode("),",$fdata[1]);
+    //    print_r($fadata2[0]);
+
+    //    die;
+        // if ($subject == 'Re: Follow up Email'){
+        if ( ($subject == 'Re: Follow up Email') )
+        {
+            // echo"yes";
+            // preg_match_all('#Candidate ID: ([^\s]+)#', $data, $subtotal);
+            echo $record_id = trim($fadata2[0]);
+            
+            $data = array();
+            $data['id'] = $record_id;
+            $data['Client_Responded'] = True; 
+            $data['trigger']="workflow";
+            
+            // $data['Rejected'] = False;
+
+            $zohoPostUpdate = [];
+            $zohoPostUpdate['data'] = array($data);
+            // print_r($zohoPostUpdate);
+            $insert_crm = $zoho->updateZohoRecruitRecord("Candidates", $record_id,$zohoPostUpdate);
+            // print_r($insert_crm);
+        }
+        // elseif((strpos($data, 'Rejected') or strpos($data, 'Reject')) && ($subject == 'Re: Follow up Email'))
+        // {
+        //     echo "else if";
+        //     preg_match_all('#Candidate ID: ([^\s]+)#', $data, $subtotal);
+        //     $record_id = trim($fadata2[0]);
+        //     $data = array();
+        //     $data['id'] = $record_id;
+        //     // $data['Approved'] = True; 
+        //     $data['Client_Responded'] = True;
+        //     $data['trigger']="workflow";
+
+        //     $zohoPostUpdate = [];
+        //     $zohoPostUpdate['data'] = array($data);
+        //     // print_r($zohoPostUpdate);
+        //     $insert_crm = $zoho->updateZohoRecruitRecord("Candidates", $record_id,$zohoPostUpdate);
+        // }
+        else{
+            echo"no";
+        }
+        
+   
+    }
+}
+// / close the connection /
+imap_close($inbox);
+
+?>
+
